@@ -1,85 +1,40 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PostForm } from "@/components/post-form";
-import { ChevronDown, Lock, PenLine } from "lucide-react";
-import DownArrow from "@/components/down-arrow";
+import { ChevronDown, Lock } from "lucide-react";
+import type { Memory } from "@/lib/types";
+import { getAllMemories, getPreviewMemories } from "@/lib/services/memories";
 import { formatRelativeDate } from "@/lib/utils";
-
-interface Memory {
-  id: number;
-  author: string;
-  timestamp: Date;
-  content: string;
-  photo?: string | null;
-  drawing?: string | null;
-}
-
-// Sample data - in a real app, this would come from your database
-const PREVIEW_POSTS: Memory[] = [
-  {
-    id: 1,
-    author: "Emma",
-    timestamp: new Date(2025, 3, 12), // April 12, 2025
-    content:
-      "I sat on this bench after getting engaged at the lake. The sun was setting and everything felt perfect in that moment.",
-  },
-  {
-    id: 2,
-    author: "Michael",
-    timestamp: new Date(2025, 2, 28), // March 28, 2025
-    content:
-      "Every Sunday morning I come here with my coffee and watch the world wake up. It's become my little ritual.",
-  },
-  {
-    id: 3,
-    author: "Sophia",
-    timestamp: new Date(2025, 2, 15), // March 15, 2025
-    content:
-      "Found this bench when I needed a quiet moment during a difficult day. The view helped me find perspective.",
-  },
-];
-
-const ALL_POSTS: Memory[] = [
-  ...PREVIEW_POSTS,
-  {
-    id: 4,
-    author: "James",
-    timestamp: new Date(2025, 2, 10), // March 10, 2025
-    content:
-      "My grandfather used to bring me to this park when I was a child. Sitting here brings back those memories.",
-  },
-  {
-    id: 5,
-    author: "Olivia",
-    timestamp: new Date(2025, 1, 28), // February 28, 2025
-    content:
-      "First picnic of the year! We chose this spot because of the beautiful view of the lake.",
-  },
-  {
-    id: 6,
-    author: "Daniel",
-    timestamp: new Date(2025, 1, 14), // February 14, 2025
-    content:
-      "Proposed to my partner here on Valentine's Day. She said yes! This bench will always be special to us.",
-  },
-  {
-    id: 7,
-    author: "Ava",
-    timestamp: new Date(2025, 0, 30), // January 30, 2025
-    content:
-      "Came here to read my book in peace. Ended up watching the sunset instead. No regrets.",
-  },
-];
 
 export function ScrollableGuestbook() {
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [allPosts, setAllPosts] = useState<Memory[]>(ALL_POSTS);
+  const [previewMemories, setPreviewMemories] = useState<Memory[]>([]);
+  const [allMemories, setAllMemories] = useState<Memory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const previewSectionRef = useRef<HTMLDivElement>(null);
   const formSectionRef = useRef<HTMLDivElement>(null);
   const allPostsSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadPreviewMemories() {
+      try {
+        const data = await getPreviewMemories();
+        setPreviewMemories(data);
+      } catch (err) {
+        console.error("Error loading preview memories:", err);
+        setError("Failed to load memories. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPreviewMemories();
+  }, []);
 
   const scrollToPreview = () => {
     previewSectionRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,15 +44,39 @@ export function ScrollableGuestbook() {
     formSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleFormComplete = (newMemory: Memory) => {
+  const handleFormComplete = async (newMemory: Memory) => {
     setHasSubmitted(true);
-    // Add the new memory to the posts
-    setAllPosts((prevPosts) => [newMemory, ...prevPosts]);
-    // Scroll to all posts section after submission
-    setTimeout(() => {
-      allPostsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+
+    try {
+      // Load all memories after submission
+      const data = await getAllMemories();
+      setAllMemories(data);
+
+      // Scroll to all posts section after submission
+      setTimeout(() => {
+        allPostsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } catch (err) {
+      console.error("Error loading all memories:", err);
+      setError("Failed to load all memories. Please try refreshing the page.");
+    }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="p-6 text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button
+            onClick={() => window.location.reload()}
+            className="bg-amber-700 hover:bg-amber-800 text-amber-50"
+          >
+            Try Again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-amber-50">
@@ -127,37 +106,6 @@ export function ScrollableGuestbook() {
         </Button>
       </section>
 
-      <section
-        id="intro"
-        className="min-h-screen flex flex-col items-center justify-center p-4"
-      >
-        <div className="text-center max-w-md w-full border border-black rounded-xl p-8 bg-white">
-          <h1 className="text-4xl font-normal mb-6 text-black">
-            Virtual Experiment
-          </h1>
-          <p className="mb-12 text-black">
-            An internet art project designed and assembled in Ithaca, NY, and
-            Toronto, ON.
-          </p>
-          <DownArrow targetId="explanation" />
-        </div>
-      </section>
-
-      {/* Explanation Section */}
-      <section
-        id="explanation"
-        className="min-h-screen flex flex-col items-center justify-center p-4"
-      >
-        <div className="text-center max-w-md w-full border border-black rounded-xl p-8 bg-white">
-          <p className="mb-12 text-black leading-relaxed">
-            we think the internet is too big/vast, too fast, othering, alien. we
-            built this guestbook, anchored to your bench, to reimagine a sweet,
-            slow web and microcommunity. welcome: read memories, leave a memory.
-          </p>
-          <DownArrow targetId="guestbook" />
-        </div>
-      </section>
-
       {/* Preview Posts Section */}
       <section
         ref={previewSectionRef}
@@ -168,14 +116,44 @@ export function ScrollableGuestbook() {
         </h2>
 
         <div className="w-full max-w-md space-y-6 mb-12">
-          {PREVIEW_POSTS.map((post) => (
-            <Card key={post.id} className="bg-white p-6 shadow-md rounded-xl">
-              <div className="text-sm text-amber-700 mb-1">
-                {post.author} • {formatRelativeDate(post.timestamp)}
-              </div>
-              <p className="text-amber-900 memory-text">"{post.content}"</p>
+          {loading ? (
+            <Card className="bg-white p-6 shadow-md rounded-xl">
+              <p className="text-center text-amber-800">Loading memories...</p>
             </Card>
-          ))}
+          ) : previewMemories.length === 0 ? (
+            <Card className="bg-white p-6 shadow-md rounded-xl">
+              <p className="text-center text-amber-800">
+                No memories yet. Be the first to share one!
+              </p>
+            </Card>
+          ) : (
+            previewMemories.map((memory) => (
+              <Card
+                key={memory.id}
+                className="bg-white p-6 shadow-md rounded-xl"
+              >
+                <div className="text-sm text-amber-700 mb-1">
+                  {memory.author} •{" "}
+                  {formatRelativeDate(new Date(memory.timestamp))}
+                </div>
+                <p className="text-amber-900 memory-text">"{memory.content}"</p>
+                {memory.photo && (
+                  <img
+                    src={memory.photo}
+                    alt="Memory photo"
+                    className="mt-4 w-full rounded-lg"
+                  />
+                )}
+                {memory.drawing && (
+                  <img
+                    src={memory.drawing}
+                    alt="Memory drawing"
+                    className="mt-4 w-full rounded-lg"
+                  />
+                )}
+              </Card>
+            ))
+          )}
         </div>
 
         <div className="flex flex-col items-center space-y-4 mb-8">
@@ -216,22 +194,26 @@ export function ScrollableGuestbook() {
           </h2>
 
           <div className="w-full max-w-md space-y-6 mb-12">
-            {allPosts.map((post) => (
-              <Card key={post.id} className="bg-white p-6 shadow-md rounded-xl">
+            {allMemories.map((memory) => (
+              <Card
+                key={memory.id}
+                className="bg-white p-6 shadow-md rounded-xl"
+              >
                 <div className="text-sm text-amber-700 mb-1">
-                  {post.author} • {formatRelativeDate(post.timestamp)}
+                  {memory.author} •{" "}
+                  {formatRelativeDate(new Date(memory.timestamp))}
                 </div>
-                <p className="text-amber-900 memory-text">"{post.content}"</p>
-                {post.photo && (
+                <p className="text-amber-900 memory-text">"{memory.content}"</p>
+                {memory.photo && (
                   <img
-                    src={post.photo}
+                    src={memory.photo}
                     alt="Memory photo"
                     className="mt-4 w-full rounded-lg"
                   />
                 )}
-                {post.drawing && (
+                {memory.drawing && (
                   <img
-                    src={post.drawing}
+                    src={memory.drawing}
                     alt="Memory drawing"
                     className="mt-4 w-full rounded-lg"
                   />

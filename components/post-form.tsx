@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,15 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PhotoCapture from "./photo-capture";
 import DrawingCanvas from "./drawing-canvas";
-
-interface Memory {
-  id: number;
-  author: string;
-  timestamp: Date;
-  content: string;
-  photo?: string | null;
-  drawing?: string | null;
-}
+import { createMemory, uploadImage } from "@/lib/services/memories";
+import type { Memory, NewMemory } from "@/lib/types";
 
 interface PostFormProps {
   onComplete: (memory: Memory) => void;
@@ -26,14 +18,13 @@ interface PostFormProps {
 
 export function PostForm({ onComplete }: PostFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     memory: "",
   });
   const [photo, setPhoto] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -42,41 +33,56 @@ export function PostForm({ onComplete }: PostFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.memory.trim()) {
-      setIsSubmitting(true);
+    if (!formData.memory.trim()) return;
 
-      // Create the new memory object
-      const newMemory: Memory = {
-        id: Date.now(),
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Upload photo if exists
+      let photoUrl = null;
+      if (photo) {
+        photoUrl = await uploadImage(photo, "photo");
+      }
+
+      // Upload drawing if exists
+      let drawingUrl = null;
+      if (drawing) {
+        drawingUrl = await uploadImage(drawing, "drawing");
+      }
+
+      // Create the new memory
+      const newMemory: NewMemory = {
         author: formData.name,
-        timestamp: new Date(),
         content: formData.memory,
-        photo: photo,
-        drawing: drawing,
+        photo: photoUrl,
+        drawing: drawingUrl,
       };
 
-      // Simulate API call
-      setTimeout(() => {
-        // In a real app, you would save the data to your database here
-        console.log("Submitted:", newMemory);
+      // Save to database
+      const savedMemory = await createMemory(newMemory);
 
-        // Clear the form
-        setFormData({ name: "", memory: "" });
-        setPhoto(null);
-        setDrawing(null);
+      // Clear the form
+      setFormData({ name: "", memory: "" });
+      setPhoto(null);
+      setDrawing(null);
 
-        // Clear the canvas
-        const canvas = document.querySelector("canvas");
-        const ctx = canvas?.getContext("2d");
-        if (ctx && canvas) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+      // Clear the canvas
+      const canvas = document.querySelector("canvas");
+      const ctx = canvas?.getContext("2d");
+      if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
 
-        setIsSubmitting(false);
-        onComplete(newMemory);
-      }, 1500);
+      // Notify parent of completion
+      onComplete(savedMemory);
+    } catch (err) {
+      console.error("Error submitting memory:", err);
+      setError("Failed to save your memory. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,6 +123,8 @@ export function PostForm({ onComplete }: PostFormProps) {
           <PhotoCapture onCapture={setPhoto} />
           <DrawingCanvas onSave={setDrawing} />
         </div>
+
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         <div className="pt-4">
           <Button
