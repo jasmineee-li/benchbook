@@ -8,6 +8,7 @@ import { ChevronDown, Lock } from "lucide-react";
 import type { Memory } from "@/lib/types";
 import { getAllMemories, getPreviewMemories } from "@/lib/services/memories";
 import { formatRelativeDate } from "@/lib/utils";
+import DownArrow from "@/components/down-arrow";
 
 export function ScrollableGuestbook() {
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -104,6 +105,37 @@ export function ScrollableGuestbook() {
           Explore Memories
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
+      </section>
+
+      <section
+        id="intro"
+        className="min-h-screen flex flex-col items-center justify-center p-4"
+      >
+        <div className="text-center max-w-md w-full border border-black rounded-xl p-8 bg-white">
+          <h1 className="text-4xl font-normal mb-6 text-black">
+            Virtual Experiment
+          </h1>
+          <p className="mb-12 text-black">
+            An internet art project designed and assembled in Ithaca, NY, and
+            Toronto, ON.
+          </p>
+          <DownArrow targetId="explanation" />
+        </div>
+      </section>
+
+      {/* Explanation Section */}
+      <section
+        id="explanation"
+        className="min-h-screen flex flex-col items-center justify-center p-4"
+      >
+        <div className="text-center max-w-md w-full border border-black rounded-xl p-8 bg-white">
+          <p className="mb-12 text-black leading-relaxed">
+            we think the internet is too big/vast, too fast, othering, alien. we
+            built this guestbook, anchored to your bench, to reimagine a sweet,
+            slow web and microcommunity. welcome: read memories, leave a memory.
+          </p>
+          <DownArrow targetId="guestbook" />
+        </div>
       </section>
 
       {/* Preview Posts Section */}
